@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
+<title>Control Financiero · Xidian</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#090b0f;--bg2:#0d1117;--card:#121722;--card2:#171d29;--line:#283142;
+  --text:#f4f7fb;--muted:#95a0b3;--accent:#9b7cff;--accent2:#6ee7ff;
+  --green:#42dd93;--red:#ff6f7d;--yellow:#ffd166;--blue:#72b9ff;--radius:18px;
+  --shadow:0 18px 50px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:
+radial-gradient(900px 500px at 10% -20%,rgba(155,124,255,.15),transparent 55%),
+radial-gradient(700px 500px at 100% 0%,rgba(110,231,255,.08),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2))}
+button,input,select,textarea{font:inherit}button{touch-action:manipulation}
+.wrap{max-width:1240px;margin:auto;padding:18px}
+.topbar{position:sticky;top:0;z-index:30;margin:-18px -18px 18px;padding:12px 18px;background:rgba(9,11,15,.9);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.06)}
+.topbar-inner{max-width:1240px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{font-weight:900;letter-spacing:-.04em;font-size:20px}.brand em{font-style:normal;color:var(--accent)}.brand small{display:block;font-size:10px;color:var(--muted);font-weight:650;letter-spacing:.02em;margin-top:2px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:12px;padding:10px 13px;cursor:pointer;transition:.18s ease}
+.btn:hover{transform:translateY(-1px);border-color:#3e4b62}.btn.primary{background:linear-gradient(135deg,var(--accent),#7559ff);border-color:transparent;font-weight:800}
+.btn.good{background:#10251a;border-color:#22593b;color:#bdf8d4}.btn.danger{background:#291519;border-color:#5e2730;color:#ffd1d6}.btn.ghost{background:transparent}
+.save-state{display:inline-flex;gap:7px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:#0d1118;color:var(--muted);font-size:11px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--yellow)}.dot.ok{background:var(--green)}.dot.err{background:var(--red)}.dot.sync{background:var(--blue)}
+.grid{display:grid;gap:14px}.kpis{grid-template-columns:repeat(5,1fr);margin-bottom:14px}.card{background:rgba(18,23,34,.96);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.kpi{padding:17px;min-width:0}.kpi .label{font-size:12px;color:var(--muted);margin-bottom:8px}.kpi .value{font-size:25px;font-weight:900;letter-spacing:-.045em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kpi .sub{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.35}
+.green{color:var(--green)!important}.red{color:var(--red)!important}.yellow{color:var(--yellow)!important}.blue{color:var(--blue)!important}
+.main{grid-template-columns:1.15fr .85fr}.section{padding:18px}h2{font-size:17px;margin:0 0 14px;letter-spacing:-.02em}h3{font-size:13px;margin:18px 0 10px;color:var(--muted);font-weight:750;text-transform:uppercase;letter-spacing:.05em}
+.field{display:flex;flex-direction:column;gap:6px}label{font-size:11px;color:var(--muted)}
+input,select,textarea{width:100%;border:1px solid var(--line);background:#0c1017;color:var(--text);border-radius:12px;padding:11px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}input[type="checkbox"]{width:auto}textarea{resize:vertical;min-height:72px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.full{grid-column:1/-1}.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.type-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.type-switch button{border:1px solid var(--line);background:#0c1017;color:var(--muted);border-radius:12px;padding:11px;cursor:pointer;font-weight:800}
+.type-switch .active.expense{background:#2c1519;color:#ffc9cf;border-color:#6a2a34}.type-switch .active.income{background:#10261b;color:#bdf7d4;border-color:#266640}
+.note{font-size:11px;color:var(--muted);line-height:1.48}.panel{background:#0d1118;border:1px solid var(--line);border-radius:14px;padding:13px}
+.progress{height:11px;background:#0b0f15;border:1px solid var(--line);border-radius:999px;overflow:hidden}.progress>div{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red))}
+.bar-list{display:flex;flex-direction:column;gap:9px}.bar-row{display:grid;grid-template-columns:126px 1fr auto;gap:9px;align-items:center;font-size:12px}.bar-track{height:8px;background:#0b0f15;border:1px solid var(--line);border-radius:999px;overflow:hidden}.bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:10px;border:1px solid var(--line);color:var(--muted);background:#0d1117}.badge.cash{background:#102219;color:#bdf8d4;border-color:#214d34}.badge.elec{background:#10202c;color:#c8ebff;border-color:#24455e}.badge.base{background:#171c32;color:#d5d9ff;border-color:#30385e}.badge.var{background:#281f12;color:#ffe0a6;border-color:#5c4723}.badge.extra{background:#261427;color:#f2c6f2;border-color:#5b2f5e}
+.mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.mini{background:#0c1017;border:1px solid var(--line);border-radius:14px;padding:12px}.mini span{font-size:11px;color:var(--muted)}.mini strong{display:block;font-size:19px;margin-top:4px}
+.fixed-list,.debt-list{display:flex;flex-direction:column;gap:8px}.fixed-item,.debt-item{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#0c1017;border:1px solid var(--line);border-radius:13px;padding:10px 11px}.fixed-item small,.debt-item small{display:block;color:var(--muted);margin-top:3px}.fixed-item strong,.debt-item strong{font-size:13px}
+.filters{display:grid;grid-template-columns:1.2fr .7fr .7fr auto;gap:8px;margin-bottom:10px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:11px 9px;border-bottom:1px solid var(--line);font-size:12px;text-align:left;vertical-align:top}th{color:var(--muted);font-weight:700}td.amount{text-align:right;font-weight:900;white-space:nowrap}.empty{padding:28px;text-align:center;color:var(--muted)}
+.callout{background:linear-gradient(135deg,rgba(155,124,255,.12),rgba(110,231,255,.06));border:1px solid rgba(155,124,255,.26);border-radius:15px;padding:14px}.callout .big{font-size:26px;font-weight:900;letter-spacing:-.04em;margin:4px 0}.callout p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+.tabs{display:flex;gap:7px;overflow:auto;margin:0 0 14px;padding-bottom:2px}.tab{white-space:nowrap;border:1px solid var(--line);background:#0c1017;color:var(--muted);border-radius:999px;padding:8px 11px;cursor:pointer;font-size:11px;font-weight:800}.tab.active{background:var(--card2);color:var(--text);border-color:#3a455b}
+dialog{border:none;width:min(680px,94vw);border-radius:18px;padding:0;background:var(--card);color:var(--text);box-shadow:var(--shadow)}dialog::backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(3px)}.dialog{padding:18px}.dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.close{border:none;background:transparent;color:var(--muted);font-size:22px;cursor:pointer}
+.hr{height:1px;background:var(--line);margin:16px 0}.hidden{display:none!important}.footer-note{font-size:11px;color:var(--muted);line-height:1.5;margin:15px 2px 0}.warning{background:#2a2211;border:1px solid #655227;color:#ffe4a8;border-radius:13px;padding:11px;font-size:11px;line-height:1.5}.success{background:#10231a;border:1px solid #25563b;color:#c7f8da;border-radius:13px;padding:11px;font-size:11px;line-height:1.5}
+@media(max-width:1020px){.kpis{grid-template-columns:repeat(3,1fr)}.main{grid-template-columns:1fr}}
+@media(max-width:700px){.wrap{padding:12px}.topbar{margin:-12px -12px 14px;padding:12px}.kpis{grid-template-columns:1fr 1fr}.form-grid,.filters{grid-template-columns:1fr}.bar-row{grid-template-columns:105px 1fr auto}.kpi .value{font-size:21px}.section{padding:14px}.actions .btn{padding:9px 10px;font-size:11px}table thead{display:none}table,tbody,tr,td{display:block;width:100%}tr{padding:10px 0;border-bottom:1px solid var(--line)}td{border:0;padding:4px 0}td.amount{text-align:left}.save-state{max-width:150px;overflow:hidden;text-overflow:ellipsis}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Control <em>Financiero</em><small>local-first · respaldo · sincronización opcional</small></div>
+    <div class="actions">
+      <span class="save-state"><span id="saveDot" class="dot"></span><span id="saveText">Cargando…</span></span>
+      <button class="btn" onclick="openCloud()">Nube</button>
+      <button class="btn" onclick="openSettings()">Ajustes</button>
+      <button class="btn" onclick="exportData()">Respaldo</button>
+      <label class="btn">Importar<input id="importFile" type="file" accept=".json" hidden></label>
+    </div>
+  </div>
+</header>
+
+<section class="grid kpis">
+  <div class="card kpi"><div class="label">Ingreso neto del mes</div><div id="kIncome" class="value green">$0</div><div class="sub">Base + variable + extraordinario</div></div>
+  <div class="card kpi"><div class="label">Gasto real del mes</div><div id="kExpense" class="value red">$0</div><div class="sub">Sin transferencias internas</div></div>
+  <div class="card kpi"><div class="label">Retenido este mes</div><div id="kBalance" class="value">$0</div><div id="kSavings" class="sub">Tasa de retención 0%</div></div>
+  <div class="card kpi"><div class="label">Disponible esta semana</div><div id="kWeek" class="value blue">$0</div><div id="kWeekSub" class="sub">Después del gasto variable</div></div>
+  <div class="card kpi"><div class="label">Fijos del mes</div><div id="kFixed" class="value yellow">$5,400</div><div id="kFixedSub" class="sub">Renta + limpieza + internet + gas</div></div>
+</section>
+
+<section class="grid main">
+  <div class="card section">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('register',this)">Registrar</button>
+      <button class="tab" onclick="showTab('week',this)">Semana</button>
+      <button class="tab" onclick="showTab('income',this)">Ingresos</button>
+      <button class="tab" onclick="showTab('fixed',this)">Fijos</button>
+      <button class="tab" onclick="showTab('debt',this)">Deuda</button>
+      <button class="tab" onclick="showTab('trash',this)">Papelera</button>
+    </div>
+
+    <div id="tab-register">
+      <h2>Registrar movimiento</h2>
+      <div class="type-switch">
+        <button id="expenseBtn" class="active expense" onclick="setType('expense')">Gasto</button>
+        <button id="incomeBtn" onclick="setType('income')">Ingreso</button>
+      </div>
+
+      <form id="txForm">
+        <div class="form-grid">
+          <div id="expenseAmountField" class="field"><label>Monto</label><input id="amount" type="number" min="0.01" step="0.01" placeholder="0.00"></div>
+          <div id="incomeGrossField" class="field hidden"><label>Monto bruto recibido</label><input id="grossAmount" type="number" min="0.01" step="0.01" placeholder="0.00"></div>
+          <div id="incomeFeeField" class="field hidden"><label>Comisión / fee</label><input id="feeAmount" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="field"><label>Fecha</label><input id="date" type="date" required></div>
+          <div class="field"><label>Medio</label><select id="method"><option value="Efectivo">Efectivo</option><option value="Electrónico">Electrónico</option></select></div>
+          <div class="field"><label>Cuenta / origen</label><select id="account"><option>Efectivo</option><option>Nu débito</option><option>Nu crédito</option><option>BBVA débito</option><option>BBVA crédito</option><option>PayPal</option><option>Otro</option></select></div>
+          <div class="field"><label>Categoría</label><select id="category"></select></div>
+          <div class="field"><label>Subcategoría</label><select id="subcategory"></select></div>
+          <div id="incomeClassField" class="field hidden"><label>Tipo de ingreso</label><select id="incomeClass"><option value="base">Base / semi-recurrente</option><option value="variable">Variable / proyecto</option><option value="extra">Extraordinario</option></select></div>
+          <div id="clientField" class="field hidden"><label>Cliente / pagador</label><input id="client" type="text" placeholder="Cliente, evento, trabajo..."></div>
+          <div class="field full"><label>Descripción / nota</label><input id="note" type="text" placeholder="Ej. Uber al trabajo, cena, pago de producción, plugin..."></div>
+          <div class="field full"><label class="inline"><input id="internal" type="checkbox"> Es movimiento entre mis propias cuentas</label></div>
+        </div>
+        <div id="netPreview" class="panel hidden" style="margin-top:10px"><span class="note">Neto que contará como ingreso</span><strong id="netPreviewValue" style="display:block;font-size:22px;margin-top:4px">$0</strong></div>
+        <div id="duplicateWarning" class="warning hidden" style="margin-top:10px"></div>
+        <div class="row-actions"><button class="btn primary" type="submit">Guardar movimiento</button><button class="btn" type="button" onclick="quickFixedMenu()">Registrar gasto fijo</button></div>
+      </form>
+    </div>
+
+    <div id="tab-week" class="hidden">
+      <h2>Tu semana</h2>
+      <div class="callout"><span class="note">Disponible para gasto variable</span><div id="weekAvailableBig" class="big">$0</div><p>La app resta tus gastos variables reales del tope semanal configurado.</p></div>
+      <div class="mini-grid" style="margin-top:10px">
+        <div class="mini"><span>Gasto variable esta semana</span><strong id="weekSpent">$0</strong></div>
+        <div class="mini"><span>Tope semanal</span><strong id="weekCap">$0</strong></div>
+        <div class="mini"><span>Uber + Delivery</span><strong id="weekUber">$0</strong></div>
+        <div class="mini"><span>Límite Uber + Delivery</span><strong id="weekUberCap">$0</strong></div>
+      </div>
+      <h3>Objetivo</h3><div class="panel"><div class="progress"><div id="weekProgress"></div></div><div id="weekProgressText" class="note" style="margin-top:8px"></div></div>
+    </div>
+
+    <div id="tab-income" class="hidden">
+      <h2>Ingresos del mes</h2>
+      <div class="mini-grid">
+        <div class="mini"><span>Base / semi-recurrente</span><strong id="incomeBase">$0</strong></div>
+        <div class="mini"><span>Variable</span><strong id="incomeVariable">$0</strong></div>
+        <div class="mini"><span>Extraordinario</span><strong id="incomeExtra">$0</strong></div>
+        <div class="mini"><span>Fees de cobro</span><strong id="incomeFees">$0</strong></div>
+      </div>
+      <h3>Ingreso seguro estimado</h3><div class="callout"><div id="safeIncome" class="big">$0</div><p>Solo toma lo marcado como base/semi-recurrente. Lo variable no se presupone para el mes siguiente.</p></div>
+      <h3>Separación sugerida</h3><div id="allocationBars" class="bar-list"></div>
+    </div>
+
+    <div id="tab-fixed" class="hidden"><h2>Gastos fijos en efectivo</h2><div id="fixedList" class="fixed-list"></div><div class="panel" style="margin-top:10px"><span class="note">Total fijo mensual</span><strong id="fixedTotalBig" style="display:block;font-size:24px;margin-top:4px">$5,400</strong></div></div>
+
+    <div id="tab-debt" class="hidden"><h2>Deuda BBVA</h2><div class="callout"><span class="note">Saldo total de referencia</span><div id="debtTotalBig" class="big">$7,485.41</div><p>Actualiza los saldos cuando hagas pagos para mantener el cálculo real.</p></div><div id="debtList" class="debt-list" style="margin-top:10px"></div><div class="row-actions"><button class="btn" onclick="openDebtEdit()">Actualizar saldos</button></div></div>
+
+    <div id="tab-trash" class="hidden"><h2>Papelera</h2><p class="note">Eliminar un movimiento no lo borra inmediatamente. Se guarda aquí para que puedas restaurarlo si fue un error.</p><div id="trashList" class="fixed-list" style="margin-top:12px"></div></div>
+  </div>
+
+  <aside class="card section">
+    <h2>Radiografía del mes</h2>
+    <div class="mini-grid"><div class="mini"><span>Efectivo neto registrado</span><strong id="cashNet">$0</strong></div><div class="mini"><span>Electrónico neto registrado</span><strong id="electronicNet">$0</strong></div></div>
+    <h3>Gasto por categoría</h3><div id="categoryBars" class="bar-list"></div>
+    <h3>Presupuesto del mes</h3><div class="progress"><div id="monthProgress"></div></div><div id="monthProgressText" class="note" style="margin-top:8px"></div>
+    <h3>Alertas</h3><div id="alerts"></div>
+    <h3>Integridad de datos</h3>
+    <div class="panel">
+      <div class="note">Último guardado local</div><strong id="lastSavedText" style="display:block;margin-top:4px">—</strong>
+      <div class="note" style="margin-top:10px">Movimientos activos / papelera</div><strong id="integrityCount" style="display:block;margin-top:4px">0 / 0</strong>
+      <div class="row-actions"><button class="btn" onclick="createManualSnapshot()">Crear snapshot</button><button class="btn" onclick="showSnapshots()">Ver snapshots</button></div>
+    </div>
+  </aside>
+</section>
+
+<section class="card section" style="margin-top:14px">
+  <div class="inline" style="justify-content:space-between"><h2 style="margin:0">Movimientos</h2><span class="note">Los movimientos internos no cuentan como ingreso ni gasto real.</span></div>
+  <div class="filters" style="margin-top:12px"><input id="search" placeholder="Buscar nota, categoría, cliente..."><select id="filterType"><option value="">Todos</option><option value="expense">Gastos</option><option value="income">Ingresos</option></select><input id="filterMonth" type="month"><button class="btn" onclick="clearFilters()">Limpiar</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Medio / cuenta</th><th>Detalle</th><th style="text-align:right">Monto</th><th></th></tr></thead><tbody id="txTable"></tbody></table></div>
+</section>
+
+<p class="footer-note">Guardado local: IndexedDB + copia espejo en localStorage + snapshots. Para sincronizar entre dispositivos configura Supabase desde “Nube”. La app intenta preservar datos y detectar conflictos, pero conserva respaldos porque ningún sistema puede garantizar cero fallos.</p>
+</div>
+
+<dialog id="settingsDialog"><div class="dialog">
+<div class="dialog-head"><h2 style="margin:0">Ajustes financieros</h2><button class="close" onclick="settingsDialog.close()">×</button></div>
+<div class="form-grid">
+<div class="field"><label>Ingreso promedio mensual</label><input id="sAvgIncome" type="number" step="100"></div><div class="field"><label>Ingreso utilizable objetivo</label><input id="sUsableIncome" type="number" step="100"></div>
+<div class="field"><label>Tope gasto variable semanal</label><input id="sWeeklyCap" type="number" step="50"></div><div class="field"><label>Tope semanal Uber + Delivery</label><input id="sUberCap" type="number" step="50"></div>
+<div class="field"><label>Meta ahorro mensual</label><input id="sSavingsTarget" type="number" step="100"></div><div class="field"><label>Meta mensual deuda</label><input id="sDebtTarget" type="number" step="100"></div>
+</div>
+<h3>Distribución sugerida por ingreso</h3>
+<div class="form-grid"><div class="field"><label>Casa / fijos %</label><input id="pFixed" type="number"></div><div class="field"><label>Deuda %</label><input id="pDebt" type="number"></div><div class="field"><label>Ahorro %</label><input id="pSavings" type="number"></div><div class="field"><label>Trabajo / música %</label><input id="pWork" type="number"></div><div class="field"><label>Disponible personal %</label><input id="pSpend" type="number"></div></div>
+<div id="allocationWarning" class="note" style="margin-top:8px"></div><div class="row-actions"><button class="btn primary" onclick="saveSettings()">Guardar</button><button class="btn" onclick="settingsDialog.close()">Cancelar</button></div>
+</div></dialog>
+
+<dialog id="fixedDialog"><div class="dialog"><div class="dialog-head"><h2 style="margin:0">Registrar gasto fijo</h2><button class="close" onclick="fixedDialog.close()">×</button></div><div class="field"><label>Gasto</label><select id="fixedSelect"></select></div><div class="field" style="margin-top:10px"><label>Fecha de pago</label><input id="fixedDate" type="date"></div><div class="row-actions"><button class="btn primary" onclick="addSelectedFixed()">Registrar como pagado</button><button class="btn" onclick="fixedDialog.close()">Cancelar</button></div></div></dialog>
+
+<dialog id="debtDialog"><div class="dialog"><div class="dialog-head"><h2 style="margin:0">Actualizar deuda BBVA</h2><button class="close" onclick="debtDialog.close()">×</button></div><div class="form-grid"><div class="field"><label>Saldo regular</label><input id="dRegular" type="number" step="0.01"></div><div class="field"><label>Plan PPF</label><input id="dPPF" type="number" step="0.01"></div><div class="field"><label>Administración pendiente</label><input id="dAdmin" type="number" step="0.01"></div></div><div class="row-actions"><button class="btn primary" onclick="saveDebt()">Guardar</button><button class="btn" onclick="debtDialog.close()">Cancelar</button></div></div></dialog>
+
+<dialog id="editDialog"><div class="dialog"><div class="dialog-head"><h2 style="margin:0">Editar movimiento</h2><button class="close" onclick="editDialog.close()">×</button></div><div class="form-grid"><div class="field"><label>Monto neto</label><input id="eAmount" type="number" step="0.01"></div><div class="field"><label>Fecha</label><input id="eDate" type="date"></div><div class="field"><label>Medio</label><select id="eMethod"><option>Efectivo</option><option>Electrónico</option></select></div><div class="field"><label>Cuenta</label><select id="eAccount"><option>Efectivo</option><option>Nu débito</option><option>Nu crédito</option><option>BBVA débito</option><option>BBVA crédito</option><option>PayPal</option><option>Otro</option></select></div><div class="field full"><label>Nota</label><input id="eNote" type="text"></div></div><div class="row-actions"><button class="btn primary" onclick="saveEdit()">Guardar cambio</button><button class="btn" onclick="editDialog.close()">Cancelar</button></div></div></dialog>
+
+<dialog id="cloudDialog"><div class="dialog">
+<div class="dialog-head"><h2 style="margin:0">Sincronización en la nube</h2><button class="close" onclick="cloudDialog.close()">×</button></div>
+<div id="cloudSetupArea">
+<div class="warning">Para sincronizar PC y celular necesitas un proyecto gratuito de Supabase. El ZIP incluye <b>supabase-setup.sql</b>. Ejecuta ese SQL una sola vez en Supabase y después pega aquí la URL del proyecto y la clave pública anon.</div>
+<div class="form-grid" style="margin-top:12px"><div class="field full"><label>Supabase Project URL</label><input id="cloudUrl" placeholder="https://xxxxx.supabase.co"></div><div class="field full"><label>Supabase anon key</label><input id="cloudKey" type="password" placeholder="eyJ..."></div></div>
+<div class="row-actions"><button class="btn primary" onclick="saveCloudConfig()">Guardar conexión</button></div>
+</div>
+<div class="hr"></div>
+<div class="form-grid"><div class="field"><label>Email</label><input id="cloudEmail" type="email"></div><div class="field"><label>Contraseña</label><input id="cloudPassword" type="password"></div></div>
+<div class="row-actions"><button class="btn good" onclick="cloudSignIn()">Entrar</button><button class="btn" onclick="cloudSignUp()">Crear cuenta</button><button class="btn" onclick="syncNow()">Sincronizar ahora</button><button class="btn ghost" onclick="cloudSignOut()">Salir</button></div>
+<div id="cloudStatusBox" class="note" style="margin-top:12px">Sin conexión.</div>
+</div></dialog>
+
+<dialog id="snapDialog"><div class="dialog"><div class="dialog-head"><h2 style="margin:0">Snapshots locales</h2><button class="close" onclick="snapDialog.close()">×</button></div><div id="snapshotList" class="fixed-list"></div></div></dialog>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:2}).format(Number(n)||0);
+const nowISO=()=>new Date().toISOString();
+const today=new Date(), isoToday=today.toISOString().slice(0,10), monthNow=isoToday.slice(0,7);
+
+const DEFAULT_SETTINGS={
+ avgIncome:18000,usableIncome:15000,weeklyCap:1500,uberCap:900,savingsTarget:1800,debtTarget:3600,
+ allocations:{fixed:30,debt:20,savings:10,work:10,spend:30},
+ fixed:[{name:"Renta",amount:3750,category:"Vivienda",subcategory:"Renta"},{name:"Limpieza",amount:1200,category:"Vivienda",subcategory:"Limpieza"},{name:"Internet",amount:200,category:"Vivienda",subcategory:"Internet"},{name:"Gas",amount:250,category:"Vivienda",subcategory:"Gas"}],
+ debt:{regular:3632.88,ppf:3353.86,admin:498.67}
+};
+const CATS={
+ expense:{
+ "Vivienda":["Renta","Limpieza","Internet","Gas","Luz","Agua","Mantenimiento","Otro"],
+ "Comida":["Supermercado","Restaurantes","Delivery","Snacks / café","Comida de trabajo","Otro"],
+ "Transporte":["Uber / DiDi","Transporte público","Gasolina","Estacionamiento","Mantenimiento","Otro"],
+ "Trabajo / Música":["Software / plugins","SoundCloud","Splice / Serum","Adobe","IA / Claude / ElevenLabs / Audimee","Equipo","Publicidad","Distribución","Diseño","Otro"],
+ "Entretenimiento":["Spotify / Deezer / streaming","Juegos","Eventos / antro","Cine","Salidas","Otro"],
+ "Compras":["Ropa","Tecnología","Hogar","Accesorios","Regalos","Otro"],
+ "Servicios":["Teléfono","Nube / storage","Apps","Otro"],"Salud":["Farmacia","Médico","Estudios","Otro"],
+ "Deuda":["Pago BBVA","Pago Nu","Intereses","Comisiones","Préstamo","Otro"],
+ "Comisiones":["PayPal","Retiro PayPal","Banco","Cambio de divisa","Otro"],
+ "Transferencias":["Familia","Amigos","Pago compartido","Otro"],"Otros":["Imprevisto","Efectivo sin clasificar","Otro"]},
+ income:{"Ingresos":["Pago semanal","PayPal / cliente","DJ / evento","Producción musical","Mezcla / master","Diseño / web","Venta","Otro"],"Reembolsos":["Devolución","Reembolso","Otro"],"Otros ingresos":["Regalo","Premio","Otro"]}
+};
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function deepMerge(base,extra){if(!extra||typeof extra!=="object")return clone(base);const out=clone(base);for(const k of Object.keys(extra)){if(extra[k]&&typeof extra[k]==="object"&&!Array.isArray(extra[k])&&out[k]&&typeof out[k]==="object"&&!Array.isArray(out[k]))out[k]=deepMerge(out[k],extra[k]);else out[k]=extra[k]}return out}
+function uid(){return crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(16).slice(2)}
+
+let appState={
+ version:3,
+ settings:clone(DEFAULT_SETTINGS),
+ data:[],
+ trash:[],
+ meta:{lastSavedAt:null,lastChangedAt:null,settingsUpdatedAt:nowISO(),deviceId:localStorage.getItem("xf_device")||uid()}
+};
+localStorage.setItem("xf_device",appState.meta.deviceId);
+
+let db=null, saveTimer=null, snapshotCounter=0, supa=null, cloudSession=null, editId=null, currentType="expense";
+
+function setSaveStatus(text,kind="sync"){
+ $("saveText").textContent=text;$("saveDot").className="dot "+(kind==="ok"?"ok":kind==="err"?"err":kind==="sync"?"sync":"");
+}
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open("xidian_finance_db",3);
+  req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains("state"))d.createObjectStore("state");if(!d.objectStoreNames.contains("snapshots"))d.createObjectStore("snapshots",{keyPath:"id"});}
+  req.onsuccess=()=>{db=req.result;resolve(db)};req.onerror=()=>reject(req.error);
+ });
+}
+function idbGet(store,key){return new Promise((resolve,reject)=>{const tx=db.transaction(store,"readonly"),r=tx.objectStore(store).get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+function idbPut(store,val,key){return new Promise((resolve,reject)=>{const tx=db.transaction(store,"readwrite"),os=tx.objectStore(store),r=key!==undefined?os.put(val,key):os.put(val);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
+function idbAll(store){return new Promise((resolve,reject)=>{const tx=db.transaction(store,"readonly"),r=tx.objectStore(store).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)})}
+function idbDelete(store,key){return new Promise((resolve,reject)=>{const tx=db.transaction(store,"readwrite"),r=tx.objectStore(store).delete(key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
+
+function normalizeState(s){
+ const out=deepMerge(appState,s||{});
+ out.settings=deepMerge(DEFAULT_SETTINGS,out.settings||{});
+ out.data=(out.data||[]).map(normalizeTx);
+ out.trash=(out.trash||[]).map(normalizeTx);
+ out.meta=deepMerge(appState.meta,out.meta||{});
+ return out;
+}
+function normalizeTx(x){
+ return {id:x.id||uid(),type:x.type||"expense",amount:Number(x.amount)||0,grossAmount:Number(x.grossAmount??x.amount)||0,feeAmount:Number(x.feeAmount)||0,date:x.date||isoToday,method:x.method||"Electrónico",account:x.account||"Otro",category:x.category||"Otros",subcategory:x.subcategory||"Otro",incomeClass:x.incomeClass||"variable",client:x.client||"",note:x.note||"",internal:!!x.internal,createdAt:x.createdAt||nowISO(),updatedAt:x.updatedAt||x.createdAt||nowISO(),deletedAt:x.deletedAt||null,history:Array.isArray(x.history)?x.history:[]};
+}
+async function loadState(){
+ setSaveStatus("Cargando…","sync");
+ try{
+  await openDB();
+  const fromDB=await idbGet("state","main");
+  let fromMirror=null;try{fromMirror=JSON.parse(localStorage.getItem("xf_state_mirror")||"null")}catch{}
+  const candidates=[fromDB,fromMirror].filter(Boolean).map(normalizeState);
+  if(candidates.length)candidates.sort((a,b)=>String(b.meta?.lastSavedAt||"").localeCompare(String(a.meta?.lastSavedAt||"")));
+  appState=candidates[0]||appState;
+  // migration from old versions
+  if(!appState.data.length){
+   try{
+    const old=JSON.parse(localStorage.getItem("xf_data")||localStorage.getItem("financeData")||"[]");
+    if(Array.isArray(old)&&old.length){appState.data=old.map(normalizeTx);appState.meta.lastChangedAt=nowISO();}
+   }catch{}
+   try{
+    const os=JSON.parse(localStorage.getItem("xf_settings")||"{}");appState.settings=deepMerge(appState.settings,os);
+   }catch{}
+  }
+  await saveState(true,false);
+  setSaveStatus("Guardado local","ok");
+ }catch(err){
+  console.error(err);setSaveStatus("Error al cargar","err");
+  alert("No pude abrir el almacenamiento local. Exporta un respaldo si aún puedes ver datos y evita cerrar la página.");
+ }
+}
+async function saveState(immediate=false,makeSnapshot=true){
+ if(!immediate){clearTimeout(saveTimer);setSaveStatus("Guardando…","sync");saveTimer=setTimeout(()=>saveState(true,makeSnapshot),180);return;}
+ try{
+  appState.version=3;appState.meta.lastSavedAt=nowISO();
+  const copy=clone(appState);
+  await idbPut("state",copy,"main");
+  localStorage.setItem("xf_state_mirror",JSON.stringify(copy));
+  snapshotCounter++;
+  if(makeSnapshot && snapshotCounter>=8){snapshotCounter=0;await createSnapshot("automático",false);}
+  setSaveStatus(cloudSession?"Guardado · pendiente nube":"Guardado local","ok");
+  $("lastSavedText").textContent=new Date(appState.meta.lastSavedAt).toLocaleString("es-MX");
+  if(cloudSession)debouncedCloudSync();
+ }catch(err){console.error(err);setSaveStatus("ERROR AL GUARDAR","err");alert("No se pudo guardar el último cambio. No cierres la app. Usa Respaldo para descargar una copia antes de continuar.");}
+}
+async function createSnapshot(label="manual",notify=true){
+ try{
+  const snap={id:Date.now(),label,createdAt:nowISO(),state:clone(appState)};
+  await idbPut("snapshots",snap);
+  const all=(await idbAll("snapshots")).sort((a,b)=>b.id-a.id);
+  for(const s of all.slice(25))await idbDelete("snapshots",s.id);
+  if(notify)alert("Snapshot local creado.");
+ }catch(err){console.error(err);if(notify)alert("No pude crear el snapshot.");}
+}
+function createManualSnapshot(){createSnapshot("manual",true)}
+async function showSnapshots(){
+ const all=(await idbAll("snapshots")).sort((a,b)=>b.id-a.id);
+ $("snapshotList").innerHTML=all.length?all.map(s=>`<div class="fixed-item"><div><strong>${new Date(s.createdAt).toLocaleString("es-MX")}</strong><small>${s.label}</small></div><span></span><button class="btn" onclick="restoreSnapshot(${s.id})">Restaurar</button></div>`).join(""):`<div class="empty">No hay snapshots todavía.</div>`;
+ snapDialog.showModal();
+}
+async function restoreSnapshot(id){
+ const s=(await idbAll("snapshots")).find(x=>x.id===id);if(!s)return;
+ if(!confirm("¿Restaurar este snapshot? Se creará un snapshot del estado actual antes de reemplazarlo."))return;
+ await createSnapshot("antes de restaurar",false);appState=normalizeState(s.state);appState.meta.lastChangedAt=nowISO();await saveState(true,false);snapDialog.close();render();
+}
+
+function markChanged(){appState.meta.lastChangedAt=nowISO();saveState(false,true);render();}
+
+$("date").value=isoToday;$("fixedDate").value=isoToday;$("filterMonth").value=monthNow;
+
+function setType(type){
+ currentType=type;$("expenseBtn").className=type==="expense"?"active expense":"";$("incomeBtn").className=type==="income"?"active income":"";
+ $("expenseAmountField").classList.toggle("hidden",type==="income");$("incomeGrossField").classList.toggle("hidden",type!=="income");$("incomeFeeField").classList.toggle("hidden",type!=="income");$("incomeClassField").classList.toggle("hidden",type!=="income");$("clientField").classList.toggle("hidden",type!=="income");$("netPreview").classList.toggle("hidden",type!=="income");populateCategories();updateNetPreview();checkDuplicate();
+}
+function populateCategories(){$("category").innerHTML=Object.keys(CATS[currentType]).map(c=>`<option>${c}</option>`).join("");updateSubs()}
+function updateSubs(){const a=CATS[currentType][$("category").value]||["Otro"];$("subcategory").innerHTML=a.map(s=>`<option>${s}</option>`).join("");checkDuplicate()}
+$("category").addEventListener("change",updateSubs);
+["grossAmount","feeAmount"].forEach(id=>$(id).addEventListener("input",()=>{updateNetPreview();checkDuplicate()}));
+["amount","date","method","account","subcategory"].forEach(id=>$(id).addEventListener("input",checkDuplicate));
+function updateNetPreview(){const g=Number($("grossAmount").value)||0,f=Number($("feeAmount").value)||0;$("netPreviewValue").textContent=fmt(Math.max(0,g-f))}
+function formAmount(){return currentType==="expense"?(Number($("amount").value)||0):Math.max(0,(Number($("grossAmount").value)||0)-(Number($("feeAmount").value)||0))}
+function findDuplicates(){
+ const amt=formAmount(),date=$("date").value,cat=$("category").value,sub=$("subcategory").value;
+ if(!amt||!date)return[];
+ return appState.data.filter(x=>!x.deletedAt&&x.type===currentType&&x.date===date&&Math.abs(x.amount-amt)<0.01&&x.category===cat&&x.subcategory===sub);
+}
+function checkDuplicate(){const ds=findDuplicates();$("duplicateWarning").classList.toggle("hidden",!ds.length);if(ds.length)$("duplicateWarning").textContent=`Posible duplicado: ya existe ${ds.length} movimiento(s) de ${fmt(formAmount())} en ${$("subcategory").value} el mismo día. Puedes guardarlo si realmente es otro gasto.`}
+
+$("txForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ let amount=0,gross=0,fee=0;if(currentType==="expense"){amount=Number($("amount").value)||0;gross=amount}else{gross=Number($("grossAmount").value)||0;fee=Number($("feeAmount").value)||0;if(fee>gross)return alert("La comisión no puede ser mayor que el ingreso bruto.");amount=gross-fee}
+ if(amount<=0||gross<=0)return alert("Escribe un monto válido mayor a cero.");
+ const dups=findDuplicates();if(dups.length&&!confirm(`Hay ${dups.length} posible(s) duplicado(s). ¿Guardar de todas formas?`))return;
+ const tx=normalizeTx({id:uid(),type:currentType,amount,grossAmount:gross,feeAmount:fee,date:$("date").value,method:$("method").value,account:$("account").value,category:$("category").value,subcategory:$("subcategory").value,incomeClass:currentType==="income"?$("incomeClass").value:"",client:currentType==="income"?$("client").value.trim():"",note:$("note").value.trim(),internal:$("internal").checked,createdAt:nowISO(),updatedAt:nowISO(),history:[]});
+ appState.data.push(tx);
+ $("amount").value="";$("grossAmount").value="";$("feeAmount").value="";$("note").value="";$("client").value="";$("internal").checked=false;updateNetPreview();checkDuplicate();markChanged();
+});
+
+function showTab(name,btn){["register","week","income","fixed","debt","trash"].forEach(n=>$("tab-"+n).classList.toggle("hidden",n!==name));document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");if(name==="trash")renderTrash()}
+function monthKey(s){return(s||"").slice(0,7)}function localDate(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function weekBounds(){const d=new Date();d.setHours(0,0,0,0);const day=d.getDay()||7,s=new Date(d);s.setDate(d.getDate()-day+1);const e=new Date(s);e.setDate(s.getDate()+6);e.setHours(23,59,59,999);return[s,e]}
+function activeData(){return appState.data.filter(x=>!x.deletedAt)}function realMonth(m){return activeData().filter(x=>monthKey(x.date)===m&&!x.internal)}
+function sum(a,fn=x=>x.amount){return a.reduce((n,x)=>n+(Number(fn(x))||0),0)}
+function isVariableExpense(x){return x.type==="expense"&&!x.internal&&!["Vivienda","Deuda"].includes(x.category)}
+function isUberOrDelivery(x){return x.type==="expense"&&!x.internal&&(x.subcategory==="Delivery"||x.subcategory==="Uber / DiDi"||/uber|didi|eats|delivery/i.test(`${x.note} ${x.subcategory}`))}
+
+function render(){
+ const s=appState.settings,sel=$("filterMonth").value||monthNow,md=realMonth(sel),inc=md.filter(x=>x.type==="income"),exp=md.filter(x=>x.type==="expense"),income=sum(inc),expense=sum(exp),bal=income-expense;
+ $("kIncome").textContent=fmt(income);$("kExpense").textContent=fmt(expense);$("kBalance").textContent=fmt(bal);$("kBalance").className="value "+(bal>=0?"green":"red");$("kSavings").textContent="Tasa de retención "+(income?((bal/income)*100).toFixed(1):"0")+"%";
+ const fixedTotal=sum(s.fixed,x=>x.amount);$("kFixed").textContent=fmt(fixedTotal);$("kFixedSub").textContent=`${s.fixed.length} gastos fijos configurados`;
+ const[ws,we]=weekBounds(),wr=activeData().filter(x=>{const d=localDate(x.date);return d>=ws&&d<=we}),weekSpent=sum(wr.filter(isVariableExpense)),weekAvail=Math.max(0,s.weeklyCap-weekSpent),wu=sum(wr.filter(isUberOrDelivery));
+ $("kWeek").textContent=fmt(weekAvail);$("kWeekSub").textContent=`gastados ${fmt(weekSpent)} de ${fmt(s.weeklyCap)}`;$("weekAvailableBig").textContent=fmt(weekAvail);$("weekSpent").textContent=fmt(weekSpent);$("weekCap").textContent=fmt(s.weeklyCap);$("weekUber").textContent=fmt(wu);$("weekUberCap").textContent=fmt(s.uberCap);$("weekProgress").style.width=Math.min(100,s.weeklyCap?weekSpent/s.weeklyCap*100:0)+"%";$("weekProgressText").textContent=weekSpent<=s.weeklyCap?`Te quedan ${fmt(weekAvail)} para gasto variable esta semana.`:`Te pasaste ${fmt(weekSpent-s.weeklyCap)} del tope semanal.`;
+ const base=sum(inc.filter(x=>x.incomeClass==="base")),variable=sum(inc.filter(x=>x.incomeClass==="variable")),extra=sum(inc.filter(x=>x.incomeClass==="extra")),fees=sum(inc,x=>x.feeAmount);$("incomeBase").textContent=fmt(base);$("incomeVariable").textContent=fmt(variable);$("incomeExtra").textContent=fmt(extra);$("incomeFees").textContent=fmt(fees);$("safeIncome").textContent=fmt(base);renderAllocation();
+ const ci=sum(md.filter(x=>x.type==="income"&&x.method==="Efectivo")),ce=sum(md.filter(x=>x.type==="expense"&&x.method==="Efectivo")),ei=sum(md.filter(x=>x.type==="income"&&x.method==="Electrónico")),ee=sum(md.filter(x=>x.type==="expense"&&x.method==="Electrónico"));$("cashNet").textContent=fmt(ci-ce);$("electronicNet").textContent=fmt(ei-ee);
+ renderCategoryBars(exp);$("monthProgress").style.width=Math.min(100,s.usableIncome?expense/s.usableIncome*100:0)+"%";$("monthProgressText").textContent=`${fmt(expense)} gastados de ${fmt(s.usableIncome)} de ingreso utilizable objetivo.`;
+ renderFixedList();renderDebt();renderAlerts({income,expense,weekSpent,wu,base,fees,fixedTotal});renderTable();renderTrash();$("integrityCount").textContent=`${activeData().length} / ${appState.trash.length}`;if(appState.meta.lastSavedAt)$("lastSavedText").textContent=new Date(appState.meta.lastSavedAt).toLocaleString("es-MX");
+}
+function renderAllocation(){const a=appState.settings.allocations,rows=[["Casa / fijos",a.fixed],["Deuda",a.debt],["Ahorro",a.savings],["Trabajo / música",a.work],["Disponible personal",a.spend]];$("allocationBars").innerHTML=rows.map(([n,p])=>`<div class="bar-row"><div>${n}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,p)}%"></div></div><div>${p}%</div></div>`).join("")}
+function renderCategoryBars(rows){const c={};rows.forEach(x=>c[x.category]=(c[x.category]||0)+x.amount);const a=Object.entries(c).sort((x,y)=>y[1]-x[1]),mx=a[0]?.[1]||1;$("categoryBars").innerHTML=a.length?a.map(([n,v])=>`<div class="bar-row"><div>${n}</div><div class="bar-track"><div class="bar-fill" style="width:${v/mx*100}%"></div></div><div>${fmt(v)}</div></div>`).join(""):`<div class="empty">Aún no hay gastos registrados este mes.</div>`}
+function renderFixedList(){$("fixedList").innerHTML=appState.settings.fixed.map((f,i)=>`<div class="fixed-item"><div><strong>${f.name}</strong><small>Mensual · ${f.category}</small></div><strong>${fmt(f.amount)}</strong><button class="btn" onclick="registerFixed(${i})">Pagar</button></div>`).join("");$("fixedTotalBig").textContent=fmt(sum(appState.settings.fixed,x=>x.amount))}
+function renderDebt(){const d=appState.settings.debt,t=d.regular+d.ppf+d.admin;$("debtTotalBig").textContent=fmt(t);$("debtList").innerHTML=`<div class="debt-item"><div><strong>Saldo regular</strong><small>Prioridad #1</small></div><strong>${fmt(d.regular)}</strong><span class="badge">52.51%</span></div><div class="debt-item"><div><strong>Plan PPF</strong><small>Prioridad #2</small></div><strong>${fmt(d.ppf)}</strong><span class="badge">48.18%</span></div><div class="debt-item"><div><strong>Administración</strong><small>Prioridad #3</small></div><strong>${fmt(d.admin)}</strong><span class="badge">0%</span></div>`}
+function renderAlerts(o){const a=[];if(o.wu>appState.settings.uberCap)a.push(`Uber + Delivery supera el límite semanal por ${fmt(o.wu-appState.settings.uberCap)}.`);if(o.weekSpent>appState.settings.weeklyCap)a.push(`Tu gasto variable semanal está ${fmt(o.weekSpent-appState.settings.weeklyCap)} arriba del objetivo.`);if(o.expense>appState.settings.usableIncome)a.push(`Tus gastos del mes superan el ingreso utilizable objetivo.`);if(o.fees>250)a.push(`Llevas ${fmt(o.fees)} en comisiones de cobro este mes.`);if(!a.length)a.push("Sin alertas críticas con los datos registrados.");$("alerts").innerHTML=a.map(t=>`<div class="panel" style="margin-bottom:8px">${t}</div>`).join("")}
+function renderTable(){let rows=[...activeData()].sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt));const q=$("search").value.trim().toLowerCase(),ty=$("filterType").value,m=$("filterMonth").value;if(q)rows=rows.filter(x=>(`${x.note} ${x.category} ${x.subcategory} ${x.client} ${x.account}`).toLowerCase().includes(q));if(ty)rows=rows.filter(x=>x.type===ty);if(m)rows=rows.filter(x=>monthKey(x.date)===m);$("txTable").innerHTML=rows.length?rows.map(x=>{const cls=x.incomeClass==="base"?"base":x.incomeClass==="extra"?"extra":"var",it=x.type==="income"?`<span class="badge ${cls}">${x.incomeClass==="base"?"base":x.incomeClass==="extra"?"extra":"variable"}</span>`:"",detail=[x.client,x.note].filter(Boolean).join(" · ")||"—";return`<tr><td>${x.date}</td><td>${x.internal?'<span class="badge">interno</span>':x.type==="income"?'<span class="badge">ingreso</span>':'<span class="badge">gasto</span>'} ${it}</td><td><strong>${x.category}</strong><br><span class="note">${x.subcategory}</span></td><td><span class="badge ${x.method==="Efectivo"?"cash":"elec"}">${x.method}</span><br><span class="note">${x.account}</span></td><td>${detail}${x.type==="income"&&x.feeAmount?`<br><span class="note">Fee ${fmt(x.feeAmount)} · bruto ${fmt(x.grossAmount)}</span>`:""}</td><td class="amount ${x.type==="income"?"green":"red"}">${x.type==="income"?"+":"-"}${fmt(x.amount)}</td><td><div class="inline"><button class="btn" onclick="openEdit('${x.id}')">Editar</button><button class="btn danger" onclick="softDelete('${x.id}')">Eliminar</button></div></td></tr>`}).join(""):`<tr><td colspan="7" class="empty">No hay movimientos con estos filtros.</td></tr>`}
+function renderTrash(){$("trashList").innerHTML=appState.trash.length?appState.trash.sort((a,b)=>String(b.deletedAt).localeCompare(String(a.deletedAt))).map(x=>`<div class="fixed-item"><div><strong>${x.date} · ${x.category}</strong><small>${x.note||x.subcategory} · ${fmt(x.amount)}</small></div><span></span><button class="btn good" onclick="restoreTx('${x.id}')">Restaurar</button></div>`).join(""):`<div class="empty">Papelera vacía.</div>`}
+function softDelete(id){const i=appState.data.findIndex(x=>x.id===id);if(i<0)return;if(!confirm("¿Mover este movimiento a la papelera? Podrás restaurarlo."))return;const x=appState.data.splice(i,1)[0];x.deletedAt=nowISO();x.updatedAt=x.deletedAt;appState.trash.push(x);markChanged()}
+function restoreTx(id){const i=appState.trash.findIndex(x=>x.id===id);if(i<0)return;const x=appState.trash.splice(i,1)[0];x.deletedAt=null;x.updatedAt=nowISO();appState.data.push(x);markChanged()}
+
+function openEdit(id){const x=appState.data.find(t=>t.id===id);if(!x)return;editId=id;$("eAmount").value=x.amount;$("eDate").value=x.date;$("eMethod").value=x.method;$("eAccount").value=x.account;$("eNote").value=x.note;editDialog.showModal()}
+function saveEdit(){const x=appState.data.find(t=>t.id===editId);if(!x)return;const amt=Number($("eAmount").value)||0;if(amt<=0)return alert("Monto inválido.");x.history.push({at:nowISO(),amount:x.amount,date:x.date,method:x.method,account:x.account,note:x.note});x.history=x.history.slice(-20);x.amount=amt;if(x.type==="expense")x.grossAmount=amt;x.date=$("eDate").value;x.method=$("eMethod").value;x.account=$("eAccount").value;x.note=$("eNote").value.trim();x.updatedAt=nowISO();editDialog.close();markChanged()}
+
+["search","filterType","filterMonth"].forEach(id=>$(id).addEventListener("input",render));function clearFilters(){$("search").value="";$("filterType").value="";$("filterMonth").value=monthNow;render()}
+
+function quickFixedMenu(){$("fixedSelect").innerHTML=appState.settings.fixed.map((f,i)=>`<option value="${i}">${f.name} — ${fmt(f.amount)}</option>`).join("");$("fixedDate").value=$("date").value||isoToday;fixedDialog.showModal()}
+function registerFixed(i){$("fixedSelect").innerHTML=appState.settings.fixed.map((f,j)=>`<option value="${j}" ${i===j?"selected":""}>${f.name} — ${fmt(f.amount)}</option>`).join("");$("fixedDate").value=isoToday;fixedDialog.showModal()}
+function addSelectedFixed(){const f=appState.settings.fixed[Number($("fixedSelect").value)];if(!f)return;const tx=normalizeTx({id:uid(),type:"expense",amount:f.amount,grossAmount:f.amount,date:$("fixedDate").value,method:"Efectivo",account:"Efectivo",category:f.category,subcategory:f.subcategory,note:"Gasto fijo mensual",internal:false,createdAt:nowISO(),updatedAt:nowISO()});const d=appState.data.filter(x=>x.date===tx.date&&x.category===tx.category&&x.subcategory===tx.subcategory&&Math.abs(x.amount-tx.amount)<.01);if(d.length&&!confirm("Parece que este gasto fijo ya fue registrado en esa fecha. ¿Agregar otro de todas formas?"))return;appState.data.push(tx);fixedDialog.close();markChanged()}
+
+function openSettings(){const s=appState.settings;$("sAvgIncome").value=s.avgIncome;$("sUsableIncome").value=s.usableIncome;$("sWeeklyCap").value=s.weeklyCap;$("sUberCap").value=s.uberCap;$("sSavingsTarget").value=s.savingsTarget;$("sDebtTarget").value=s.debtTarget;$("pFixed").value=s.allocations.fixed;$("pDebt").value=s.allocations.debt;$("pSavings").value=s.allocations.savings;$("pWork").value=s.allocations.work;$("pSpend").value=s.allocations.spend;updateAllocationWarning();settingsDialog.showModal()}
+["pFixed","pDebt","pSavings","pWork","pSpend"].forEach(id=>$(id).addEventListener("input",updateAllocationWarning));
+function updateAllocationWarning(){const t=["pFixed","pDebt","pSavings","pWork","pSpend"].reduce((a,id)=>a+(Number($(id).value)||0),0);$("allocationWarning").textContent=`Total: ${t}% ${t===100?"✓":"· debe sumar 100%"}`;$("allocationWarning").className="note "+(t===100?"green":"yellow")}
+function saveSettings(){const t=["pFixed","pDebt","pSavings","pWork","pSpend"].reduce((a,id)=>a+(Number($(id).value)||0),0);if(t!==100)return alert("La distribución debe sumar 100%.");const s=appState.settings;s.avgIncome=Number($("sAvgIncome").value)||0;s.usableIncome=Number($("sUsableIncome").value)||0;s.weeklyCap=Number($("sWeeklyCap").value)||0;s.uberCap=Number($("sUberCap").value)||0;s.savingsTarget=Number($("sSavingsTarget").value)||0;s.debtTarget=Number($("sDebtTarget").value)||0;s.allocations={fixed:Number($("pFixed").value)||0,debt:Number($("pDebt").value)||0,savings:Number($("pSavings").value)||0,work:Number($("pWork").value)||0,spend:Number($("pSpend").value)||0};appState.meta.settingsUpdatedAt=nowISO();settingsDialog.close();markChanged()}
+function openDebtEdit(){const d=appState.settings.debt;$("dRegular").value=d.regular;$("dPPF").value=d.ppf;$("dAdmin").value=d.admin;debtDialog.showModal()}
+function saveDebt(){appState.settings.debt={regular:Number($("dRegular").value)||0,ppf:Number($("dPPF").value)||0,admin:Number($("dAdmin").value)||0};appState.meta.settingsUpdatedAt=nowISO();debtDialog.close();markChanged()}
+
+function exportData(){const payload=clone(appState);payload.exportedAt=nowISO();const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`finanzas-xidian-backup-${isoToday}.json`;a.click();URL.revokeObjectURL(url)}
+$("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const obj=normalizeState(JSON.parse(await f.text()));const mode=confirm("Aceptar = FUSIONAR con lo actual (recomendado). Cancelar = no importar.")?"merge":"cancel";if(mode==="cancel")return;await createSnapshot("antes de importar",false);appState=mergeStates(appState,obj);appState.meta.lastChangedAt=nowISO();await saveState(true,false);render();alert("Importación fusionada sin borrar el historial local.")}catch(err){alert("No pude importar: "+err.message)}e.target.value=""});
+
+function mergeStates(a,b){
+ a=normalizeState(a);b=normalizeState(b);const map=new Map();
+ [...a.data,...b.data].forEach(x=>{const prev=map.get(x.id);if(!prev||String(x.updatedAt).localeCompare(String(prev.updatedAt))>0)map.set(x.id,normalizeTx(x))});
+ const trashMap=new Map();[...a.trash,...b.trash].forEach(x=>{const prev=trashMap.get(x.id);if(!prev||String(x.updatedAt).localeCompare(String(prev.updatedAt))>0)trashMap.set(x.id,normalizeTx(x))});
+ // If same id exists in trash and active, latest updatedAt wins.
+ for(const [id,t] of trashMap){const active=map.get(id);if(active&&String(active.updatedAt).localeCompare(String(t.updatedAt))>=0)trashMap.delete(id);else if(active)map.delete(id)}
+ const settings=String(b.meta?.settingsUpdatedAt||"").localeCompare(String(a.meta?.settingsUpdatedAt||""))>0?b.settings:a.settings;
+ return normalizeState({version:3,settings,data:[...map.values()],trash:[...trashMap.values()],meta:{...a.meta,lastChangedAt:[a.meta?.lastChangedAt,b.meta?.lastChangedAt].sort().pop(),settingsUpdatedAt:[a.meta?.settingsUpdatedAt,b.meta?.settingsUpdatedAt].sort().pop(),deviceId:a.meta.deviceId}});
+}
+
+// ---- Supabase cloud sync ----
+const CLOUD_CFG_KEY="xf_cloud_cfg";let cloudSyncTimer=null;
+function getCloudCfg(){try{return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)||"null")}catch{return null}}
+function initSupa(){const c=getCloudCfg();if(!c||!window.supabase)return null;try{supa=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});return supa}catch(e){console.error(e);return null}}
+async function refreshSession(){if(!supa)return;const{data}=await supa.auth.getSession();cloudSession=data?.session||null;if(cloudSession)setSaveStatus("Local + nube","ok")}
+function openCloud(){const c=getCloudCfg();$("cloudUrl").value=c?.url||"";$("cloudKey").value=c?.key||"";refreshCloudBox();cloudDialog.showModal()}
+function saveCloudConfig(){const url=$("cloudUrl").value.trim(),key=$("cloudKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/i.test(url))return alert("La URL de Supabase no parece válida.");if(key.length<30)return alert("La anon key parece incompleta.");localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify({url,key}));initSupa();refreshSession();refreshCloudBox();alert("Conexión guardada en este dispositivo. Ahora inicia sesión.")}
+async function cloudSignUp(){if(!supa&&!initSupa())return alert("Configura Supabase primero.");const email=$("cloudEmail").value.trim(),password=$("cloudPassword").value;if(password.length<8)return alert("Usa una contraseña de al menos 8 caracteres.");const{data,error}=await supa.auth.signUp({email,password});if(error)return alert(error.message);cloudSession=data.session||null;refreshCloudBox();alert("Cuenta creada. Si Supabase exige confirmación por correo, confírmala antes de entrar.")}
+async function cloudSignIn(){if(!supa&&!initSupa())return alert("Configura Supabase primero.");const{data,error}=await supa.auth.signInWithPassword({email:$("cloudEmail").value.trim(),password:$("cloudPassword").value});if(error)return alert(error.message);cloudSession=data.session;refreshCloudBox();await syncNow()}
+async function cloudSignOut(){if(supa)await supa.auth.signOut();cloudSession=null;setSaveStatus("Guardado local","ok");refreshCloudBox()}
+async function refreshCloudBox(){if(!supa)initSupa();if(supa)await refreshSession();$("cloudStatusBox").textContent=cloudSession?`Conectado como ${cloudSession.user.email}. Los cambios se sincronizan automáticamente.`:"Sin sesión en la nube. El guardado local sigue activo."}
+function debouncedCloudSync(){clearTimeout(cloudSyncTimer);cloudSyncTimer=setTimeout(syncNow,1200)}
+async function syncNow(){
+ if(!supa&&!initSupa())return;
+ await refreshSession();if(!cloudSession)return;
+ setSaveStatus("Sincronizando nube…","sync");
+ try{
+  const uid_=cloudSession.user.id;
+  const {data:remote,error:readErr}=await supa.from("finance_vaults").select("data,revision,updated_at").eq("user_id",uid_).maybeSingle();
+  if(readErr)throw readErr;
+  let merged=appState,rev=0;
+  if(remote?.data){merged=mergeStates(appState,remote.data);rev=Number(remote.revision)||0}
+  merged.meta.lastSavedAt=appState.meta.lastSavedAt; // preserve local save timestamp
+  const {error:writeErr}=await supa.from("finance_vaults").upsert({user_id:uid_,data:merged,revision:rev+1,updated_at:nowISO()},{onConflict:"user_id"});
+  if(writeErr)throw writeErr;
+  appState=normalizeState(merged);await saveState(true,false);setSaveStatus("Sincronizado","ok");refreshCloudBox();render();
+ }catch(err){console.error(err);setSaveStatus("Nube con error · local OK","err");$("cloudStatusBox").textContent="Error de nube: "+err.message+". Tus datos siguen guardados localmente.";}
+}
+
+// init
+(async()=>{populateCategories();await loadState();initSupa();await refreshSession();render();if(cloudSession)syncNow()})();
+</script>
+</body>
+</html>
