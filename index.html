@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0b0f">
 <title>Control Financiero · Xidian</title>
+<!-- v3.1: fixed cloud sync feedback loop -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -193,8 +194,8 @@ dialog{border:none;width:min(680px,94vw);border-radius:18px;padding:0;background
 <dialog id="cloudDialog"><div class="dialog">
 <div class="dialog-head"><h2 style="margin:0">Sincronización en la nube</h2><button class="close" onclick="cloudDialog.close()">×</button></div>
 <div id="cloudSetupArea">
-<div class="warning">Para sincronizar PC y celular necesitas un proyecto gratuito de Supabase. El ZIP incluye <b>supabase-setup.sql</b>. Ejecuta ese SQL una sola vez en Supabase y después pega aquí la URL del proyecto y la clave pública anon.</div>
-<div class="form-grid" style="margin-top:12px"><div class="field full"><label>Supabase Project URL</label><input id="cloudUrl" placeholder="https://xxxxx.supabase.co"></div><div class="field full"><label>Supabase anon key</label><input id="cloudKey" type="password" placeholder="eyJ..."></div></div>
+<div class="warning">Para sincronizar PC y celular necesitas un proyecto gratuito de Supabase. El ZIP incluye <b>supabase-setup.sql</b>. Ejecuta ese SQL una sola vez en Supabase y después pega aquí la URL del proyecto y la Publishable Key.</div>
+<div class="form-grid" style="margin-top:12px"><div class="field full"><label>Supabase Project URL</label><input id="cloudUrl" placeholder="https://xxxxx.supabase.co"></div><div class="field full"><label>Supabase Publishable Key</label><input id="cloudKey" type="password" placeholder="eyJ..."></div></div>
 <div class="row-actions"><button class="btn primary" onclick="saveCloudConfig()">Guardar conexión</button></div>
 </div>
 <div class="hr"></div>
@@ -292,15 +293,15 @@ async function loadState(){
     const os=JSON.parse(localStorage.getItem("xf_settings")||"{}");appState.settings=deepMerge(appState.settings,os);
    }catch{}
   }
-  await saveState(true,false);
+  await saveState(true,false,false);
   setSaveStatus("Guardado local","ok");
  }catch(err){
   console.error(err);setSaveStatus("Error al cargar","err");
   alert("No pude abrir el almacenamiento local. Exporta un respaldo si aún puedes ver datos y evita cerrar la página.");
  }
 }
-async function saveState(immediate=false,makeSnapshot=true){
- if(!immediate){clearTimeout(saveTimer);setSaveStatus("Guardando…","sync");saveTimer=setTimeout(()=>saveState(true,makeSnapshot),180);return;}
+async function saveState(immediate=false,makeSnapshot=true,triggerCloud=true){
+ if(!immediate){clearTimeout(saveTimer);setSaveStatus("Guardando…","sync");saveTimer=setTimeout(()=>saveState(true,makeSnapshot,triggerCloud),180);return;}
  try{
   appState.version=3;appState.meta.lastSavedAt=nowISO();
   const copy=clone(appState);
@@ -310,7 +311,7 @@ async function saveState(immediate=false,makeSnapshot=true){
   if(makeSnapshot && snapshotCounter>=8){snapshotCounter=0;await createSnapshot("automático",false);}
   setSaveStatus(cloudSession?"Guardado · pendiente nube":"Guardado local","ok");
   $("lastSavedText").textContent=new Date(appState.meta.lastSavedAt).toLocaleString("es-MX");
-  if(cloudSession)debouncedCloudSync();
+  if(cloudSession && triggerCloud)debouncedCloudSync();
  }catch(err){console.error(err);setSaveStatus("ERROR AL GUARDAR","err");alert("No se pudo guardar el último cambio. No cierres la app. Usa Respaldo para descargar una copia antes de continuar.");}
 }
 async function createSnapshot(label="manual",notify=true){
@@ -331,7 +332,7 @@ async function showSnapshots(){
 async function restoreSnapshot(id){
  const s=(await idbAll("snapshots")).find(x=>x.id===id);if(!s)return;
  if(!confirm("¿Restaurar este snapshot? Se creará un snapshot del estado actual antes de reemplazarlo."))return;
- await createSnapshot("antes de restaurar",false);appState=normalizeState(s.state);appState.meta.lastChangedAt=nowISO();await saveState(true,false);snapDialog.close();render();
+ await createSnapshot("antes de restaurar",false);appState=normalizeState(s.state);appState.meta.lastChangedAt=nowISO();await saveState(true,false,false);snapDialog.close();render();
 }
 
 function markChanged(){appState.meta.lastChangedAt=nowISO();saveState(false,true);render();}
@@ -412,7 +413,7 @@ function openDebtEdit(){const d=appState.settings.debt;$("dRegular").value=d.reg
 function saveDebt(){appState.settings.debt={regular:Number($("dRegular").value)||0,ppf:Number($("dPPF").value)||0,admin:Number($("dAdmin").value)||0};appState.meta.settingsUpdatedAt=nowISO();debtDialog.close();markChanged()}
 
 function exportData(){const payload=clone(appState);payload.exportedAt=nowISO();const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`finanzas-xidian-backup-${isoToday}.json`;a.click();URL.revokeObjectURL(url)}
-$("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const obj=normalizeState(JSON.parse(await f.text()));const mode=confirm("Aceptar = FUSIONAR con lo actual (recomendado). Cancelar = no importar.")?"merge":"cancel";if(mode==="cancel")return;await createSnapshot("antes de importar",false);appState=mergeStates(appState,obj);appState.meta.lastChangedAt=nowISO();await saveState(true,false);render();alert("Importación fusionada sin borrar el historial local.")}catch(err){alert("No pude importar: "+err.message)}e.target.value=""});
+$("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const obj=normalizeState(JSON.parse(await f.text()));const mode=confirm("Aceptar = FUSIONAR con lo actual (recomendado). Cancelar = no importar.")?"merge":"cancel";if(mode==="cancel")return;await createSnapshot("antes de importar",false);appState=mergeStates(appState,obj);appState.meta.lastChangedAt=nowISO();await saveState(true,false,false);render();if(cloudSession)debouncedCloudSync();alert("Importación fusionada sin borrar el historial local.")}catch(err){alert("No pude importar: "+err.message)}e.target.value=""});
 
 function mergeStates(a,b){
  a=normalizeState(a);b=normalizeState(b);const map=new Map();
@@ -430,7 +431,7 @@ function getCloudCfg(){try{return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)
 function initSupa(){const c=getCloudCfg();if(!c||!window.supabase)return null;try{supa=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});return supa}catch(e){console.error(e);return null}}
 async function refreshSession(){if(!supa)return;const{data}=await supa.auth.getSession();cloudSession=data?.session||null;if(cloudSession)setSaveStatus("Local + nube","ok")}
 function openCloud(){const c=getCloudCfg();$("cloudUrl").value=c?.url||"";$("cloudKey").value=c?.key||"";refreshCloudBox();cloudDialog.showModal()}
-function saveCloudConfig(){const url=$("cloudUrl").value.trim(),key=$("cloudKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/i.test(url))return alert("La URL de Supabase no parece válida.");if(key.length<30)return alert("La anon key parece incompleta.");localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify({url,key}));initSupa();refreshSession();refreshCloudBox();alert("Conexión guardada en este dispositivo. Ahora inicia sesión.")}
+function saveCloudConfig(){const url=$("cloudUrl").value.trim(),key=$("cloudKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/i.test(url))return alert("La URL de Supabase no parece válida.");if(key.length<30)return alert("La Publishable Key parece incompleta.");localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify({url,key}));initSupa();refreshSession();refreshCloudBox();alert("Conexión guardada en este dispositivo. Ahora inicia sesión.")}
 async function cloudSignUp(){if(!supa&&!initSupa())return alert("Configura Supabase primero.");const email=$("cloudEmail").value.trim(),password=$("cloudPassword").value;if(password.length<8)return alert("Usa una contraseña de al menos 8 caracteres.");const{data,error}=await supa.auth.signUp({email,password});if(error)return alert(error.message);cloudSession=data.session||null;refreshCloudBox();alert("Cuenta creada. Si Supabase exige confirmación por correo, confírmala antes de entrar.")}
 async function cloudSignIn(){if(!supa&&!initSupa())return alert("Configura Supabase primero.");const{data,error}=await supa.auth.signInWithPassword({email:$("cloudEmail").value.trim(),password:$("cloudPassword").value});if(error)return alert(error.message);cloudSession=data.session;refreshCloudBox();await syncNow()}
 async function cloudSignOut(){if(supa)await supa.auth.signOut();cloudSession=null;setSaveStatus("Guardado local","ok");refreshCloudBox()}
@@ -449,7 +450,7 @@ async function syncNow(){
   merged.meta.lastSavedAt=appState.meta.lastSavedAt; // preserve local save timestamp
   const {error:writeErr}=await supa.from("finance_vaults").upsert({user_id:uid_,data:merged,revision:rev+1,updated_at:nowISO()},{onConflict:"user_id"});
   if(writeErr)throw writeErr;
-  appState=normalizeState(merged);await saveState(true,false);setSaveStatus("Sincronizado","ok");refreshCloudBox();render();
+  appState=normalizeState(merged);await saveState(true,false,false);setSaveStatus("Sincronizado","ok");refreshCloudBox();render();
  }catch(err){console.error(err);setSaveStatus("Nube con error · local OK","err");$("cloudStatusBox").textContent="Error de nube: "+err.message+". Tus datos siguen guardados localmente.";}
 }
 
